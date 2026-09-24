@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f5ede1">
+<title>古琴练习计时器</title>
+<style>
+  :root{
+    --paper:#f5ede1;
+    --paper-2:#fbf5ec;
+    --ink:#33291f;
+    --ink-2:#6b5949;
+    --ink-3:#9b8873;
+    --line:rgba(140,110,78,.22);
+    --line-2:rgba(140,110,78,.12);
+    --wood:#8b6b4a;
+    --wood-d:#6d5238;
+    --seal:#a83232;
+    --jade:#4e7c5b;
+    --jade-2:#6a9c76;
+    --card:rgba(255,252,247,.74);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{min-height:100%}
+  body{
+    margin:0;
+    padding:28px 16px 64px;
+    font-family:"Songti SC","STSong","Noto Serif SC","SimSun","Source Han Serif SC",serif;
+    color:var(--ink);
+    background:
+      radial-gradient(circle at 16% 6%, #fdfaf4 0%, rgba(253,250,244,0) 46%),
+      radial-gradient(circle at 84% 94%, #eee1cd 0%, rgba(238,225,205,0) 58%),
+      var(--paper);
+    display:flex;
+    justify-content:center;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  [hidden]{display:none !important}
+  .app{width:100%;max-width:520px}
+
+  .site-header{text-align:center;margin-bottom:24px}
+  .seal{
+    width:46px;height:46px;margin:0 auto 14px;
+    display:grid;place-items:center;
+    background:var(--seal);color:#fdf6ee;
+    font-size:23px;line-height:1;border-radius:9px;
+    box-shadow:0 4px 12px rgba(168,50,50,.26);
+  }
+  .site-header h1{
+    margin:0 0 8px;font-size:22px;font-weight:600;
+    letter-spacing:6px;text-indent:6px;
+  }
+  .site-header p{
+    margin:0;font-size:12px;letter-spacing:3px;color:#b0a08e;
+  }
+
+  .panel{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:24px;
+    padding:26px 20px 24px;
+    box-shadow:0 14px 40px rgba(92,69,48,.09);
+    backdrop-filter:blur(3px);
+  }
+
+  .ring-wrap{
+    position:relative;
+    width:min(300px,74vw);
+    aspect-ratio:1/1;
+    margin:0 auto 6px;
+  }
+  .ring-wrap svg{
+    width:100%;height:100%;display:block;
+    transform:rotate(-90deg);
+  }
+  .ring-track{
+    fill:none;stroke:rgba(140,110,78,.14);stroke-width:7;
+  }
+  .ring-progress{
+    fill:none;stroke:var(--seal);stroke-width:7;
+    stroke-linecap:round;
+    transition:stroke-dashoffset .18s linear, stroke .4s ease;
+  }
+  .ring-wrap.is-practicing .ring-progress{stroke:var(--jade)}
+  .ring-wrap.is-waiting .ring-progress{stroke:var(--wood)}
+
+  .ring-content{
+    position:absolute;inset:0;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    gap:9px;pointer-events:none;
+  }
+  .phase-label{
+    font-size:12.5px;letter-spacing:5px;text-indent:5px;
+    color:var(--ink-3);
+  }
+  .main-time{
+    font-size:clamp(40px,13vw,56px);
+    font-variant-numeric:tabular-nums;
+    letter-spacing:1px;line-height:1;
+    color:#2e251d;
+  }
+  .sub-time{
+    font-size:12px;letter-spacing:1px;
+    color:#b0a08e;min-height:16px;
+    text-align:center;padding:0 18px;
+  }
+
+  .meter{
+    display:flex;align-items:center;gap:10px;
+    margin:14px auto 0;width:min(300px,74vw);
+  }
+  .meter-track{
+    flex:1;height:5px;border-radius:99px;
+    background:rgba(140,110,78,.13);
+    overflow:hidden;
+  }
+  .meter-fill{
+    height:100%;width:0%;border-radius:99px;
+    background:linear-gradient(90deg,var(--wood),var(--jade-2),var(--jade));
+    transition:width .09s linear;
+  }
+  .meter-dot{
+    width:9px;height:9px;border-radius:50%;
+    background:rgba(140,110,78,.25);
+    transition:background .15s, box-shadow .15s;
+    flex:none;
+  }
+  .meter-dot.on{
+    background:var(--jade);
+    box-shadow:0 0 10px rgba(78,124,91,.7);
+  }
+  .meter-label{
+    font-size:10.5px;color:var(--ink-3);
+    letter-spacing:1px;width:56px;text-align:right;flex:none;
+  }
+
+  .btn-main{
+    display:flex;align-items:center;justify-content:center;gap:10px;
+    width:100%;margin-top:22px;
+    padding:15px 20px;
+    font-family:inherit;font-size:16px;
+    letter-spacing:5px;text-indent:5px;
+    color:#fdf8f0;
+    background:var(--wood);
+    border:1px solid var(--wood);
+    border-radius:15px;
+    cursor:pointer;
+    transition:background .2s, border-color .2s, transform .1s;
+  }
+  .btn-main:hover{background:var(--wood-d);border-color:var(--wood-d)}
+  .btn-main:active{transform:translateY(1px)}
+  .btn-main.listening{
+    background:var(--seal);border-color:var(--seal);
+  }
+  .btn-main.listening:hover{background:#8f2828;border-color:#8f2828}
+  .btn-dot{
+    width:9px;height:9px;border-radius:50%;
+    background:#fdf8f0;flex:none;
+  }
+  .btn-main.listening .btn-dot{
+    animation:pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{opacity:1;transform:scale(1)}
+    50%{opacity:.35;transform:scale(.72)}
+  }
+
+  .hint{
+    margin-top:14px;text-align:center;
+    font-size:12.5px;line-height:1.75;
+    color:#8a7866;letter-spacing:.5px;
+    min-height:20px;
+    padding:10px 12px;
+    background:rgba(140,110,78,.06);
+    border-radius:11px;
+    border:1px solid transparent;
+    transition:.2s;
+  }
+  .hint.err{
+    color:#8f2828;
+    background:rgba(168,50,50,.08);
+    border-color:rgba(168,50,50,.22);
+  }
+  .hint.ok{
+    color:#3f6b4c;
+    background:rgba(78,124,91,.08);
+    border-color:rgba(78,124,91,.2);
+  }
+
+  .settings{
+    margin-top:18px;
+    border-top:1px solid var(--line-2);
+    padding-top:14px;
+  }
+  .settings summary{
+    list-style:none;cursor:pointer;
+    font-size:12.5px;letter-spacing:2px;
+    color:var(--ink-3);
+    padding:4px 0;
+    user-select:none;
+  }
+  .settings summary::-webkit-details-marker{display:none}
+  .settings summary::before{content:"⚙ ";font-size:11px}
+  .settings[open] summary{color:var(--wood)}
+  .setting-row{
+    display:flex;align-items:center;gap:12px;
+    margin-top:13px;font-size:12.5px;color:var(--ink-2);
+  }
+  .setting-row label{width:96px;flex:none;letter-spacing:1px}
+  .setting-row input[type=range]{
+    flex:1;-webkit-appearance:none;appearance:none;
+    height:4px;border-radius:99px;
+    background:rgba(140,110,78,.18);
+    outline:none;
+  }
+  .setting-row input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;
+    width:16px;height:16px;border-radius:50%;
+    background:var(--wood);cursor:pointer;
+    box-shadow:0 1px 4px rgba(109,82,56,.4);
+  }
+  .setting-row input[type=range]::-moz-range-thumb{
+    width:16px;height:16px;border:none;border-radius:50%;
+    background:var(--wood);cursor:pointer;
+  }
+  .setting-row span{
+    width:56px;flex:none;text-align:right;
+    font-size:12px;color:var(--ink-3);
+  }
+
+  .records{margin-top:30px}
+  .records-head{
+    display:flex;justify-content:space-between;align-items:baseline;
+    padding:0 4px 11px;
+    border-bottom:1px solid var(--line);
+  }
+  .records-head h2{
+    margin:0;font-size:15px;font-weight:500;letter-spacing:4px;
+  }
+  .records-head span{font-size:13px;color:var(--seal);letter-spacing:1px}
+
+  #recordList{list-style:none;margin:0;padding:0}
+  #recordList>li.empty{
+    text-align:center;padding:30px 0;
+    font-size:13px;color:#c0b3a3;letter-spacing:1px;
+  }
+  .day-group{margin-top:6px}
+  .day-head{
+    display:flex;justify-content:space-between;align-items:baseline;
+    padding:12px 4px 6px;
+  }
+  .day-label{font-size:13px;color:var(--ink-2);letter-spacing:2px}
+  .day-total{font-size:12.5px;color:var(--seal)}
+  .day-items{list-style:none;margin:0;padding:0}
+  .rec-item{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:9px 4px 9px 14px;
+    border-bottom:1px dashed var(--line-2);
+  }
+  .rec-time{font-size:12.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+  .rec-dur{font-size:13.5px;color:var(--ink);font-variant-numeric:tabular-nums}
+
+  .report-btns{
+    display:flex;gap:10px;margin-top:22px;
+  }
+  .btn-report{
+    flex:1;
+    font-family:inherit;font-size:13.5px;
+    letter-spacing:3px;text-indent:3px;
+    padding:12px 8px;
+    border-radius:13px;
+    border:1px solid var(--line);
+    background:rgba(255,255,255,.5);
+    color:var(--ink-2);
+    cursor:pointer;
+    transition:.18s;
+  }
+  .btn-report:hover{background:#fff;border-color:var(--wood);color:var(--wood)}
+  .btn-report:active{transform:translateY(1px)}
+  .btn-clear{
+    display:block;margin:16px auto 0;
+    background:none;border:none;font-family:inherit;
+    font-size:12px;letter-spacing:2px;color:#c0b3a3;
+    padding:7px 12px;border-radius:8px;cursor:pointer;
+    transition:.18s;
+  }
+  .btn-clear:hover{color:var(--seal);background:rgba(168,50,50,.06)}
+
+  .modal{
+    position:fixed;inset:0;z-index:50;
+    display:flex;align-items:center;justify-content:center;
+    padding:20px;
+  }
+  .modal-backdrop{
+    position:absolute;inset:0;
+    background:rgba(46,37,29,.4);
+    backdrop-filter:blur(3px);
+    animation:fadeIn .2s ease;
+  }
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .modal-panel{
+    position:relative;
+    width:100%;max-width:480px;
+    max-height:86vh;
+    display:flex;flex-direction:column;
+    background:var(--paper-2);
+    border:1px solid var(--line);
+    border-radius:22px;
+    box-shadow:0 24px 60px rgba(50,38,28,.3);
+    animation:popIn .24s cubic-bezier(.2,.9,.3,1.1);
+    overflow:hidden;
+  }
+  @keyframes popIn{
+    from{opacity:0;transform:translateY(14px) scale(.97)}
+    to{opacity:1;transform:none}
+  }
+  .modal-head{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:18px 22px 14px;
+    border-bottom:1px solid var(--line-2);
+    flex:none;
+  }
+  .modal-head h2{
+    margin:0;font-size:16px;font-weight:600;letter-spacing:3px;
+  }
+  .modal-close{
+    width:32px;height:32px;
+    display:grid;place-items:center;
+    border:none;border-radius:9px;cursor:pointer;
+    background:transparent;color:var(--ink-3);
+    font-size:16px;font-family:inherit;
+    transition:.15s;
+  }
+  .modal-close:hover{background:rgba(140,110,78,.1);color:var(--ink)}
+  .modal-body{
+    padding:20px 22px 26px;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .rep-range{
+    text-align:center;font-size:12.5px;
+    color:var(--ink-3);letter-spacing:1px;
+    margin-bottom:18px;
+  }
+  .rep-stats{
+    display:grid;grid-template-columns:1fr 1fr;
+    gap:10px;margin-bottom:22px;
+  }
+  .rep-stat{
+    background:rgba(255,255,255,.7);
+    border:1px solid var(--line-2);
+    border-radius:14px;
+    padding:13px 12px;
+    text-align:center;
+  }
+  .rep-stat .v{
+    font-size:19px;color:var(--ink);
+    font-variant-numeric:tabular-nums;
+    letter-spacing:.5px;
+  }
+  .rep-stat .k{
+    font-size:11.5px;color:var(--ink-3);
+    letter-spacing:2px;margin-top:5px;
+  }
+
+  .chart{
+    display:flex;align-items:flex-end;gap:3px;
+    height:110px;margin-bottom:8px;
+    padding:0 2px;
+  }
+  .chart-col{
+    flex:1;height:100%;
+    display:flex;flex-direction:column;
+    justify-content:flex-end;align-items:center;
+    min-width:0;
+  }
+  .chart-bar{
+    width:100%;max-width:22px;
+    border-radius:4px 4px 2px 2px;
+    background:linear-gradient(180deg,var(--jade-2),var(--jade));
+    min-height:2px;
+    transition:height .3s ease;
+  }
+  .chart-bar.zero{background:rgba(140,110,78,.13)}
+  .chart-x{
+    display:flex;gap:3px;padding:0 2px;
+    margin-bottom:20px;
+  }
+  .chart-x span{
+    flex:1;text-align:center;
+    font-size:9.5px;color:#c0b3a3;
+    min-width:0;overflow:hidden;white-space:nowrap;
+  }
+
+  .rep-days{list-style:none;margin:0;padding:0}
+  .rep-days li{
+    display:flex;justify-content:space-between;
+    padding:9px 2px;
+    font-size:13px;
+    border-bottom:1px dashed var(--line-2);
+  }
+  .rep-days li span:first-child{color:var(--ink-2)}
+  .rep-days li span:last-child{color:var(--ink);font-variant-numeric:tabular-nums}
+  .rep-empty{
+    text-align:center;padding:34px 0;
+    color:#c0b3a3;font-size:13px;letter-spacing:1px;
+  }
+
+  .tech-note{
+    margin-top:16px;padding:10px 12px;
+    background:rgba(78,124,91,.06);
+    border:1px solid rgba(78,124,91,.15);
+    border-radius:11px;
+    font-size:11.5px;line-height:1.7;
+    color:#5a7a63;letter-spacing:.3px;
+  }
+  .tech-note b{color:var(--jade);font-weight:600}
+
+  @media (max-width:380px){
+    .setting-row label{width:78px;font-size:12px}
+    .setting-row span{width:48px;font-size:11.5px}
+    .meter-label{width:46px;font-size:10px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="site-header">
+    <div class="seal">琴</div>
+    <h1>古琴练习计时器</h1>
+    <p>七特征识别 · 抗人声干扰</p>
+  </header>
+
+  <section class="panel">
+
+    <div class="ring-wrap" id="ringWrap">
+      <svg viewBox="0 0 320 320" aria-hidden="true">
+        <circle class="ring-track" cx="160" cy="160" r="140"></circle>
+        <circle class="ring-progress" id="ringProgress" cx="160" cy="160" r="140"></circle>
+      </svg>
+      <div class="ring-content">
+        <div class="phase-label" id="phaseLabel">未开始</div>
+        <div class="main-time" id="mainTime">00:00</div>
+        <div class="sub-time" id="subTime">点击下方按钮开始</div>
+      </div>
+    </div>
+
+    <div class="meter">
+      <div class="meter-track"><div class="meter-fill" id="meterFill"></div></div>
+      <div class="meter-dot" id="meterDot"></div>
+      <div class="meter-label" id="meterLabel">琴声 0%</div>
+    </div>
+
+    <button class="btn-main" id="listenBtn" type="button">
+      <span class="btn-dot"></span>
+      <span id="listenBtnText">开始监听</span>
+    </button>
+
+    <div class="hint" id="hintText">点击按钮并允许麦克风权限，开始识别古琴声</div>
+
+    <details class="settings">
+      <summary>识别与抗干扰设置</summary>
+      <div class="setting-row">
+        <label>灵敏度</label>
+        <input type="range" id="sensSlider" min="0.5" max="2" step="0.1" value="1">
+        <span id="sensVal">标准</span>
+      </div>
+      <div class="setting-row">
+        <label>启动所需</label>
+        <input type="range" id="reqSlider" min="3" max="30" step="1" value="10">
+        <span id="reqVal">10 秒</span>
+      </div>
+      <div class="setting-row">
+        <label>静音暂停</label>
+        <input type="range" id="pauseSlider" min="3" max="30" step="1" value="10">
+        <span id="pauseVal">10 秒</span>
+      </div>
+      <div class="tech-note">
+        <b>抗人声算法</b>：通过频谱谐波比、峰锐度、频谱平坦度、基频能量比、
+        音高稳定性、低频/中频能量比、信噪比共 7 项特征加权投票，
+        人声的共振峰宽、音高跳变大，会被识别为非琴声而过滤。
+        环境噪声在开始监听时会自动学习。
+      </div>
+    </details>
+
+  </section>
+
+  <section class="records">
+    <div class="records-head">
+      <h2>练习记录</h2>
+      <span id="todayTotal">今日 0 分钟</span>
+    </div>
+    <ul id="recordList"></ul>
+
+    <div class="report-btns">
+      <button class="btn-report" id="weekBtn" type="button">生 成 周 报</button>
+      <button class="btn-report" id="monthBtn" type="button">生 成 月 报</button>
+    </div>
+
+    <button class="btn-clear" id="clearBtn" type="button">清空全部记录</button>
+  </section>
+
+</div>
+
+<div class="modal" id="reportModal" hidden>
+  <div class="modal-backdrop" id="reportBackdrop"></div>
+  <div class="modal-panel">
+    <div class="modal-head">
+      <h2 id="reportTitle">练习报告</h2>
+      <button class="modal-close" id="reportClose" type="button" aria-label="关闭">✕</button>
+    </div>
+    <div class="modal-body" id="reportBody"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ═══════════════ DOM ═══════════════ */
+  function $(id) { return document.getElementById(id); }
+
+  var listenBtn     = $('listenBtn');
+  var listenBtnText = $('listenBtnText');
+  var ringWrap      = $('ringWrap');
+  var ringProgress  = $('ringProgress');
+  var phaseLabel    = $('phaseLabel');
+  var mainTime      = $('mainTime');
+  var subTime       = $('subTime');
+  var hintText      = $('hintText');
+  var meterFill     = $('meterFill');
+  var meterDot      = $('meterDot');
+  var meterLabel    = $('meterLabel');
+
+  var sensSlider    = $('sensSlider');
+  var sensVal       = $('sensVal');
+  var reqSlider     = $('reqSlider');
+  var reqVal        = $('reqVal');
+  var pauseSlider   = $('pauseSlider');
+  var pauseVal      = $('pauseVal');
+
+  var recordList    = $('recordList');
+  var todayTotal    = $('todayTotal');
+  var weekBtn       = $('weekBtn');
+  var monthBtn      = $('monthBtn');
+  var clearBtn      = $('clearBtn');
+
+  var reportModal   = $('reportModal');
+  var reportTitle   = $('reportTitle');
+  var reportBody    = $('reportBody');
+  var reportClose   = $('reportClose');
+  var reportBackdrop= $('reportBackdrop');
+
+  /* ═══════════════ 提示工具 ═══════════════ */
+  function setHint(msg, kind) {
+    hintText.textContent = msg;
+    hintText.className = 'hint' + (kind ? ' ' + kind : '');
+  }
+
+  /* ═══════════════ 常量 ═══════════════ */
+  var RING_R = 140;
+  var RING_C = 2 * Math.PI * RING_R;
+  var STORE_KEY = 'guqin_practice_records_v3';
+  var CALIB_FRAMES = 40;
+  var FRAME_MS = 40;
+
+  ringProgress.style.strokeDasharray = RING_C;
+  ringProgress.style.strokeDashoffset = RING_C;
+
+  /* ═══════════════ 参数 ═══════════════ */
+  var P = {
+    sens: 1,
+    requiredMs: 10000,
+    pauseMs: 10000,
+    gapMs: 2200,
+    enterConf: 0.62,
+    stayConf: 0.42,
+    loHz: 65,
+    hiHz: 3000,
+    maxF0Hz: 1000
+  };
+
+  function updateThresholds() {
+    var s = P.sens;
+    P.enterConf = Math.max(0.30, 0.62 - (s - 1) * 0.22);
+    P.stayConf  = Math.max(0.18, 0.42 - (s - 1) * 0.18);
+  }
+  updateThresholds();
+
+  /* ═══════════════ 运行时状态 ═══════════════ */
+  var listening      = false;
+  var audioCtx       = null;
+  var analyser       = null;
+  var mediaStream    = null;
+  var freqBuf        = null;
+  var rBuf           = null;
+  var noiseFloor     = null;
+  var calibrated     = false;
+  var calibFrames    = 0;
+  var analysisTimer  = null;
+  var renderRAF      = null;
+  var lastFrameTs    = 0;
+
+  var toneConfidence = 0;
+  var isToneState    = false;
+  var toneHold       = 0;
+  var lastActiveTs   = -1e9;
+  var segmentStart   = null;
+  var pitchHistory   = [];
+
+  var practicing     = false;
+  var currentSegment = null;
+  var sessionTotalMs = 0;
+
+  /* ═══════════════ 工具 ═══════════════ */
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+  function sanitizeDb(v) {
+    if (typeof v !== 'number' || !isFinite(v)) return -150;
+    return Math.max(-150, Math.min(0, v));
+  }
+  function fmtMS(ms) {
+    var t = Math.max(0, Math.floor(ms / 1000));
+    var h = Math.floor(t / 3600);
+    var m = Math.floor((t % 3600) / 60);
+    var s = t % 60;
+    return h > 0 ? h + ':' + pad2(m) + ':' + pad2(s) : pad2(m) + ':' + pad2(s);
+  }
+  function fmtDur(sec) {
+    sec = Math.round(sec);
+    if (sec < 60) return sec + ' 秒';
+    var h = Math.floor(sec / 3600);
+    var m = Math.floor((sec % 3600) / 60);
+    if (h > 0) return h + ' 小时 ' + m + ' 分';
+    var s = sec % 60;
+    return s > 0 ? m + ' 分 ' + s + ' 秒' : m + ' 分钟';
+  }
+  function fmtMinShort(sec) {
+    if (sec < 60) return sec + ' 秒';
+    var m = Math.round(sec / 60);
+    if (m < 60) return m + ' 分钟';
+    return Math.floor(m / 60) + ' 小时 ' + (m % 60) + ' 分';
+  }
+
+  /* ═══════════════ 中国时间 ═══════════════ */
+  var cnDayFmt, cnTimeFmt;
+  try {
+    cnDayFmt = new Intl.DateTimeFormat('zh-CN', {
+      timeZone: 'Asia/Shanghai',
+      year: 'numeric', month: '2-digit', day: '2-digit'
+    });
+    cnTimeFmt = new Intl.DateTimeFormat('zh-CN', {
+      timeZone: 'Asia/Shanghai',
+      hour: '2-digit', minute: '2-digit', hour12: false
+    });
+  } catch (e) {
+    cnDayFmt = null;
+    cnTimeFmt = null;
+  }
+
+  function chinaDayKey(ts) {
+    if (!cnDayFmt) {
+      var d = new Date(ts);
+      return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+    }
+    var parts = cnDayFmt.formatToParts(new Date(ts));
+    var y = '', m = '', dd = '';
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i].type === 'year') y = parts[i].value;
+      else if (parts[i].type === 'month') m = parts[i].value;
+      else if (parts[i].type === 'day') dd = parts[i].value;
+    }
+    return y + '-' + m + '-' + dd;
+  }
+  function chinaTimeStr(ts) {
+    if (!cnTimeFmt) {
+      var d = new Date(ts);
+      return pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    }
+    return cnTimeFmt.format(new Date(ts));
+  }
+  function dayOfWeek(key) {
+    var p = key.split('-');
+    return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])).getUTCDay();
+  }
+  function addDays(key, n) {
+    var p = key.split('-');
+    var t = Date.UTC(+p[0], +p[1] - 1, +p[2]) + n * 86400000;
+    var d = new Date(t);
+    return d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate());
+  }
+  function fmtDayLabel(key) {
+    var today = chinaDayKey(Date.now());
+    if (key === today) return '今天';
+    if (key === addDays(today, -1)) return '昨天';
+    var p = key.split('-');
+    var names = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    return (+p[1]) + '月' + (+p[2]) + '日 ' + names[dayOfWeek(key)];
+  }
+  function fmtKeyShort(key) {
+    var p = key.split('-');
+    return (+p[1]) + '/' + (+p[2]);
+  }
+
+  /* ═══════════════ 记录存储 ═══════════════ */
+  var records = loadRecords();
+
+  function loadRecords() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return [];
+      var arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) return [];
+      return arr.filter(function (r) {
+        return r && typeof r.startTs === 'number' && typeof r.durationSec === 'number' && r.durationSec > 0;
+      }).map(function (r) {
+        return { id: r.id || uid(), startTs: r.startTs, durationSec: r.durationSec };
+      });
+    } catch (e) { return []; }
+  }
+  function saveRecords() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(records)); } catch (e) {}
+  }
+  function upsertSegment() {
+    if (!currentSegment) return;
+    var rec = {
+      id: currentSegment.id,
+      startTs: currentSegment.startTs,
+      durationSec: Math.round(currentSegment.durationMs / 1000)
+    };
+    if (rec.durationSec < 1) return;
+    var idx = -1;
+    for (var i = 0; i < records.length; i++) {
+      if (records[i].id === rec.id) { idx = i; break; }
+    }
+    if (idx >= 0) records[idx] = rec;
+    else records.push(rec);
+    saveRecords();
+  }
+  function finalizeSegment() {
+    if (!currentSegment) return;
+    upsertSegment();
+    currentSegment = null;
+    renderRecords();
+  }
+
+  /* ═══════════════ 记录渲染 ═══════════════ */
+  function renderRecords() {
+    var todayKey = chinaDayKey(Date.now());
+    var todaySec = 0;
+    records.forEach(function (r) {
+      if (chinaDayKey(r.startTs) === todayKey) todaySec += r.durationSec;
+    });
+    todayTotal.textContent = '今日 ' + fmtMinShort(todaySec);
+
+    if (records.length === 0) {
+      recordList.innerHTML = '<li class="empty">还没有练习记录</li>';
+      return;
+    }
+
+    var sorted = records.slice().sort(function (a, b) { return b.startTs - a.startTs; });
+    var groups = [];
+    var map = {};
+    sorted.forEach(function (r) {
+      var k = chinaDayKey(r.startTs);
+      if (!map[k]) { map[k] = []; groups.push(k); }
+      map[k].push(r);
+    });
+
+    var html = '';
+    var shown = 0;
+    for (var i = 0; i < groups.length && shown < 8; i++) {
+      var key = groups[i];
+      var list = map[key];
+      var daySec = 0;
+      list.forEach(function (r) { daySec += r.durationSec; });
+
+      html += '<li class="day-group">';
+      html += '<div class="day-head"><span class="day-label">' + fmtDayLabel(key) +
+              '</span><span class="day-total">' + fmtMinShort(daySec) + '</span></div>';
+      html += '<ul class="day-items">';
+      list.forEach(function (r) {
+        html += '<li class="rec-item">' +
+                  '<span class="rec-time">' + chinaTimeStr(r.startTs) + '</span>' +
+                  '<span class="rec-dur">' + fmtDur(r.durationSec) + '</span>' +
+                '</li>';
+      });
+      html += '</ul></li>';
+      shown++;
+    }
+    recordList.innerHTML = html;
+  }
+
+  /* ═══════════════ 基频检测（HPS） ═══════════════ */
+  function findF0HPS(spec, loBin, hiBin, binHz) {
+    var maxF0Bin = Math.min(hiBin, Math.round(P.maxF0Hz / binHz));
+    var bestBin = -1, bestVal = -Infinity;
+
+    for (var b = loBin; b <= maxF0Bin; b++) {
+      var logSum = 0, count = 0;
+      for (var h = 1; h <= 5; h++) {
+        var idx = b * h;
+        if (idx > hiBin) break;
+        logSum += Math.log(spec[idx] + 1e-6);
+        count++;
+      }
+      if (count >= 2 && logSum > bestVal) { bestVal = logSum; bestBin = b; }
+    }
+
+    if (bestBin < 0) return -1;
+
+    if (bestBin > loBin && bestBin < maxF0Bin) {
+      var y1 = 0, y2 = 0, y3 = 0;
+      for (var h2 = 1; h2 <= 5; h2++) {
+        var i1 = (bestBin - 1) * h2;
+        var i2 = bestBin * h2;
+        var i3 = (bestBin + 1) * h2;
+        if (i3 > hiBin) break;
+        y1 += Math.log(spec[i1] + 1e-6);
+        y2 += Math.log(spec[i2] + 1e-6);
+        y3 += Math.log(spec[i3] + 1e-6);
+      }
+      var denom = y1 - 2 * y2 + y3;
+      if (Math.abs(denom) > 1e-9) {
+        var delta = 0.5 * (y1 - y3) / denom;
+        if (Math.abs(delta) < 1) return (bestBin + delta) * binHz;
+      }
+    }
+    return bestBin * binHz;
+  }
+
+  /* ═══════════════ 置信度计算（7 特征） ═══════════════ */
+  function computeConfidence(f) {
+    var s = P.sens;
+    var score = 0, totalW = 0, w;
+
+    w = 2;
+    score += clamp(f.snrDb / (8 / s), 0, 1) * w;
+    totalW += w;
+
+    w = 2.5;
+    score += clamp(f.harmRatio / (0.20 / s), 0, 1) * w;
+    totalW += w;
+
+    w = 1.5;
+    var flatT = 0.55 * Math.sqrt(s);
+    var flatScore = f.flatness < flatT ? 1 : clamp(1 - (f.flatness - flatT) / 0.35, 0, 1);
+    score += flatScore * w;
+    totalW += w;
+
+    w = 2.5;
+    score += clamp(f.sharpness / (3 / s), 0, 1) * w;
+    totalW += w;
+
+    w = 1.5;
+    score += clamp(f.lowMidRatio / (1.2 / s), 0, 1) * w;
+    totalW += w;
+
+    w = 2;
+    score += clamp(f.pitchStab / (0.45 / Math.sqrt(s)), 0, 1) * w;
+    totalW += w;
+
+    w = 2;
+    score += clamp(f.f0Ratio / (0.15 / s), 0, 1) * w;
+    totalW += w;
+
+    return score / totalW;
+  }
+
+  /* ═══════════════ 音频分析主循环 ═══════════════ */
+  function analyze() {
+    if (!listening || !analyser || !audioCtx) return;
+
+    var now = performance.now();
+    var dt = now - lastFrameTs;
+    if (dt < 0) dt = FRAME_MS;
+    if (dt > 250) dt = 250;
+    lastFrameTs = now;
+
+    analyser.getFloatFrequencyData(freqBuf);
+
+    var sr = audioCtx.sampleRate;
+    var binHz = sr / analyser.fftSize;
+    var nBins = freqBuf.length;
+    var loBin = Math.max(1, Math.ceil(P.loHz / binHz));
+    var hiBin = Math.min(nBins - 1, Math.floor(P.hiHz / binHz));
+    var n = hiBin - loBin + 1;
+
+    /* 环境校准 */
+    if (!calibrated) {
+      if (!noiseFloor) {
+        noiseFloor = new Float32Array(nBins);
+        for (var i0 = 0; i0 < nBins; i0++) noiseFloor[i0] = sanitizeDb(freqBuf[i0]);
+      } else {
+        for (var i1 = 0; i1 < nBins; i1++) {
+          var v1 = sanitizeDb(freqBuf[i1]);
+          if (v1 < noiseFloor[i1]) noiseFloor[i1] = v1;
+        }
+      }
+      calibFrames++;
+      if (calibFrames >= CALIB_FRAMES) {
+        calibrated = true;
+        setHint('环境校准完成，请开始弹奏古琴', 'ok');
+      }
+      return;
+    }
+
+    /* 归一化频谱 */
+    if (!rBuf || rBuf.length < nBins) rBuf = new Float32Array(nBins);
+
+    var sumR = 0, sumLogR = 0, maxR = 0, maxRBin = loBin;
+    for (var i = loBin; i <= hiBin; i++) {
+      var pw = Math.pow(10, sanitizeDb(freqBuf[i]) / 10);
+      var nf = Math.pow(10, noiseFloor[i] / 10);
+      var r = (pw + 1e-11) / (nf + 1e-11);
+      rBuf[i] = r;
+      sumR += r;
+      sumLogR += Math.log(r + 1e-12);
+      if (r > maxR) { maxR = r; maxRBin = i; }
+    }
+
+    var meanR = sumR / n;
+    var geoR = Math.exp(sumLogR / n);
+    var flatness = geoR / (meanR + 1e-12);
+    var snrDb = 10 * Math.log10(meanR + 1e-12);
+
+    var f0 = findF0HPS(rBuf, loBin, hiBin, binHz);
+
+    var harmEnergy = 0, sharpSum = 0, sharpN = 0;
+    if (f0 > 0) {
+      for (var k = 1; k <= 6; k++) {
+        var fk = f0 * k;
+        if (fk > hiBin * binHz) break;
+        var c = Math.round(fk / binHz);
+        if (c < loBin || c > hiBin) continue;
+
+        var m = 0;
+        for (var j = Math.max(loBin, c - 1); j <= Math.min(hiBin, c + 1); j++) {
+          if (rBuf[j] > m) m = rBuf[j];
+        }
+        harmEnergy += m;
+
+        var localMax = 0, localSum = 0, cnt = 0;
+        for (var j2 = Math.max(loBin, c - 3); j2 <= Math.min(hiBin, c + 3); j2++) {
+          if (rBuf[j2] > localMax) localMax = rBuf[j2];
+          localSum += rBuf[j2];
+          cnt++;
+        }
+        if (cnt > 0 && localMax > 0) {
+          sharpSum += localMax / (localSum / cnt + 1e-12);
+          sharpN++;
+        }
+      }
+    }
+    var harmRatio = harmEnergy / (sumR + 1e-12);
+    var sharpness = sharpN > 0 ? sharpSum / sharpN : 0;
+
+    var f0Ratio = 0;
+    if (f0 > 0) {
+      var f0Bin = Math.round(f0 / binHz);
+      var f0E = 0;
+      for (var j3 = Math.max(loBin, f0Bin - 1); j3 <= Math.min(hiBin, f0Bin + 1); j3++) {
+        f0E += rBuf[j3];
+      }
+      f0Ratio = f0E / (sumR + 1e-12);
+    }
+
+    var lowE = 0, midE = 0;
+    for (var i2 = loBin; i2 <= hiBin; i2++) {
+      var f2 = i2 * binHz;
+      if (f2 >= 80 && f2 <= 700) lowE += rBuf[i2];
+      else if (f2 > 700 && f2 <= 3000) midE += rBuf[i2];
+    }
+    var lowMidRatio = lowE / (midE + 1e-12);
+
+    if (f0 > 0) {
+      pitchHistory.push({ ts: now, f0: f0 });
+    }
+    while (pitchHistory.length > 0 && (now - pitchHistory[0].ts) > 600) {
+      pitchHistory.shift();
+    }
+    var validPitches = [];
+    for (var ip = 0; ip < pitchHistory.length; ip++) {
+      if (pitchHistory[ip].f0 > 0) validPitches.push(pitchHistory[ip].f0);
+    }
+    var pitchStab = 0.30;
+    if (validPitches.length >= 4) {
+      var mP = 0;
+      for (var a = 0; a < validPitches.length; a++) mP += validPitches[a];
+      mP /= validPitches.length;
+      var vP = 0;
+      for (var b2 = 0; b2 < validPitches.length; b2++) {
+        vP += (validPitches[b2] - mP) * (validPitches[b2] - mP);
+      }
+      vP = Math.sqrt(vP / validPitches.length);
+      var cv = vP / (mP + 1e-12);
+      pitchStab = Math.max(0, 1 - cv * 6);
+    }
+
+    for (var i3 = 0; i3 < nBins; i3++) {
+      var v3 = sanitizeDb(freqBuf[i3]);
+      if (v3 < noiseFloor[i3]) {
+        noiseFloor[i3] += (v3 - noiseFloor[i3]) * 0.15;
+      } else {
+        noiseFloor[i3] += (v3 - noiseFloor[i3]) * 0.003;
+      }
+    }
+
+    var conf = computeConfidence({
+      snrDb: snrDb,
+      harmRatio: harmRatio,
+      flatness: flatness,
+      sharpness: sharpness,
+      lowMidRatio: lowMidRatio,
+      pitchStab: pitchStab,
+      f0Ratio: f0Ratio
+    });
+
+    toneConfidence = toneConfidence * 0.62 + conf * 0.38;
+
+    if (isToneState) {
+      isToneState = toneConfidence > P.stayConf;
+    } else {
+      isToneState = toneConfidence > P.enterConf;
+    }
+
+    var active = isToneState;
+
+    if (active) {
+      toneHold = 1;
+      lastActiveTs = now;
+      if (segmentStart === null) segmentStart = now;
+    } else {
+      var since = now - lastActiveTs;
+      toneHold = since >= 1800 ? 0 : (1 - since / 1800);
+      if (segmentStart !== null && since > P.gapMs) segmentStart = null;
+    }
+
+    updatePracticeState(active, now, dt);
+
+    var displayLevel = Math.max(toneConfidence, toneHold * 0.4);
+    meterFill.style.width = (clamp(displayLevel, 0, 1) * 100).toFixed(1) + '%';
+    if (isToneState) meterDot.classList.add('on');
+    else meterDot.classList.remove('on');
+    meterLabel.textContent = '琴声 ' + Math.round(toneConfidence * 100) + '%';
+  }
+
+  /* ═══════════════ 练习状态机 ═══════════════ */
+  function updatePracticeState(active, now, dt) {
+    var continuousMs = segmentStart !== null ? (now - segmentStart) : 0;
+
+    if (!practicing) {
+      if (continuousMs >= P.requiredMs) {
+        practicing = true;
+        currentSegment = {
+          id: uid(),
+          startTs: Date.now() - continuousMs,
+          durationMs: continuousMs,
+          savedMs: 0
+        };
+        sessionTotalMs += continuousMs;
+        upsertSegment();
+      }
+    } else {
+      if (active) {
+        currentSegment.durationMs += dt;
+        sessionTotalMs += dt;
+
+        if (currentSegment.durationMs - currentSegment.savedMs >= 10000) {
+          currentSegment.savedMs = currentSegment.durationMs;
+          upsertSegment();
+        }
+      }
+
+      if ((now - lastActiveTs) > P.pauseMs) {
+        practicing = false;
+        finalizeSegment();
+        segmentStart = null;
+      }
+    }
+  }
+
+  /* ═══════════════ 界面渲染循环 ═══════════════ */
+  function renderUI() {
+    var now = performance.now();
+    mainTime.textContent = fmtMS(sessionTotalMs);
+
+    var progress = 0;
+    var phase = '';
+    var sub = '';
+    var cls = '';
+
+    if (!listening) {
+      phase = '未开始';
+      sub = '点击下方按钮开始';
+      progress = 0;
+    } else if (!calibrated) {
+      phase = '校准中';
+      sub = '正在学习环境噪声…';
+      progress = Math.min(1, calibFrames / CALIB_FRAMES);
+      cls = 'is-waiting';
+    } else if (practicing && currentSegment) {
+      phase = '练习中';
+      sub = '本次已练 ' + fmtMS(currentSegment.durationMs);
+      progress = (sessionTotalMs % 60000) / 60000;
+      cls = 'is-practicing';
+    } else if (segmentStart !== null) {
+      var cont = now - segmentStart;
+      phase = '识别中';
+      sub = '连续演奏 ' + (cont / 1000).toFixed(1) + ' / ' + (P.requiredMs / 1000) + ' 秒';
+      progress = Math.min(1, cont / P.requiredMs);
+      cls = 'is-waiting';
+    } else if (lastActiveTs > 0 && (now - lastActiveTs) < 120000) {
+      phase = '等待中';
+      sub = '继续弹奏以恢复计时';
+      progress = 0;
+      cls = 'is-waiting';
+    } else {
+      phase = '等待古琴声';
+      sub = '请开始弹奏';
+      progress = 0;
+      cls = 'is-waiting';
+    }
+
+    phaseLabel.textContent = phase;
+    subTime.textContent = sub;
+    ringWrap.className = 'ring-wrap' + (cls ? ' ' + cls : '');
+    ringProgress.style.strokeDashoffset = RING_C * (1 - progress);
+
+    document.title = listening
+      ? (practicing ? fmtMS(sessionTotalMs) + ' · 练习中' : '监听中 · 古琴练习计时器')
+      : '古琴练习计时器';
+  }
+
+  function renderLoop() {
+    renderRAF = requestAnimationFrame(renderLoop);
+    renderUI();
+  }
+
+  /* ═══════════════ 启动 / 停止监听 ═══════════════ */
+  function startListening() {
+    console.log('[古琴计时器] 点击了开始监听');
+
+    /* 第 1 步：浏览器能力检查，给出明确提示 */
+    if (typeof navigator === 'undefined') {
+      setHint('无法访问浏览器 API，请更换浏览器', 'err');
+      return;
+    }
+    if (!navigator.mediaDevices) {
+      console.error('[古琴计时器] navigator.mediaDevices 不存在');
+      setHint(
+        '浏览器不支持麦克风采集。可能原因：① 页面通过 file:// 打开，请改用本地服务器（如 python -m http.server）；② 浏览器过旧，请使用最新版 Chrome / Edge / Safari；③ 使用了隐私模式。',
+        'err'
+      );
+      return;
+    }
+    if (typeof navigator.mediaDevices.getUserMedia !== 'function') {
+      console.error('[古琴计时器] getUserMedia 不是函数');
+      setHint('浏览器不支持 getUserMedia，请更新浏览器', 'err');
+      return;
+    }
+    if (typeof (window.AudioContext || window.webkitAudioContext) !== 'function') {
+      console.error('[古琴计时器] 浏览器不支持 AudioContext');
+      setHint('浏览器不支持 Web Audio API，请更新浏览器', 'err');
+      return;
+    }
+
+    /* 第 2 步：更改 UI 状态，让用户看到点击已被响应 */
+    listenBtn.disabled = true;
+    listenBtnText.textContent = '请求权限中…';
+    setHint('正在请求麦克风权限，请在弹出的窗口中选择“允许”…');
+
+    /* 第 3 步：包裹 getUserMedia，捕获同步异常 */
+    var mediaPromise;
+    try {
+      mediaPromise = navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        }
+      });
+    } catch (syncErr) {
+      console.error('[古琴计时器] getUserMedia 同步异常', syncErr);
+      listenBtn.disabled = false;
+      listenBtnText.textContent = '开始监听';
+      setHint('调用麦克风失败（同步错误）：' + (syncErr && syncErr.message ? syncErr.message : syncErr), 'err');
+      return;
+    }
+
+    if (!mediaPromise || typeof mediaPromise.then !== 'function') {
+      console.error('[古琴计时器] getUserMedia 未返回 Promise');
+      listenBtn.disabled = false;
+      listenBtnText.textContent = '开始监听';
+      setHint('浏览器返回了非预期的麦克风对象，请更新浏览器', 'err');
+      return;
+    }
+
+    /* 第 4 步：设置 15 秒超时保护，避免长时间卡在无响应状态 */
+    var settled = false;
+    var timeoutId = setTimeout(function () {
+      if (settled) return;
+      settled = true;
+      console.warn('[古琴计时器] getUserMedia 超过 15 秒未响应');
+      listenBtn.disabled = false;
+      listenBtnText.textContent = '开始监听';
+      setHint(
+        '请求麦克风权限超时（15 秒）。请检查：① 浏览器地址栏左侧的权限图标；② 系统设置中的麦克风隐私开关；③ 是否有其他程序占用了麦克风。',
+        'err'
+      );
+    }, 15000);
+
+    mediaPromise.then(function (stream) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      console.log('[古琴计时器] 已获取麦克风流');
+
+      mediaStream = stream;
+
+      var AC = window.AudioContext || window.webkitAudioContext;
+      try {
+        audioCtx = new AC();
+      } catch (ctxErr) {
+        console.error('[古琴计时器] 创建 AudioContext 失败', ctxErr);
+        try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
+        mediaStream = null;
+        listenBtn.disabled = false;
+        listenBtnText.textContent = '开始监听';
+        setHint('创建音频上下文失败：' + (ctxErr && ctxErr.message ? ctxErr.message : ctxErr), 'err');
+        return;
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(function () {});
+      }
+
+      var source;
+      try {
+        source = audioCtx.createMediaStreamSource(stream);
+      } catch (srcErr) {
+        console.error('[古琴计时器] 创建音频源失败', srcErr);
+        try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
+        if (audioCtx) { try { audioCtx.close(); } catch (e) {} audioCtx = null; }
+        mediaStream = null;
+        listenBtn.disabled = false;
+        listenBtnText.textContent = '开始监听';
+        setHint('无法读取麦克风音频：' + (srcErr && srcErr.message ? srcErr.message : srcErr), 'err');
+        return;
+      }
+
+      var hp = audioCtx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 55;
+      hp.Q.value = 0.7;
+
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 4096;
+      analyser.smoothingTimeConstant = 0.4;
+
+      source.connect(hp);
+      hp.connect(analyser);
+
+      freqBuf = new Float32Array(analyser.frequencyBinCount);
+      noiseFloor = null;
+      calibrated = false;
+      calibFrames = 0;
+      rBuf = null;
+
+      toneConfidence = 0;
+      isToneState = false;
+      toneHold = 0;
+      lastActiveTs = -1e9;
+      segmentStart = null;
+      pitchHistory = [];
+      practicing = false;
+      currentSegment = null;
+      sessionTotalMs = 0;
+      lastFrameTs = performance.now();
+
+      listening = true;
+      listenBtn.classList.add('listening');
+      listenBtnText.textContent = '停止监听';
+      listenBtn.disabled = false;
+      setHint('正在校准环境噪声，请保持安静约 2 秒…');
+
+      analysisTimer = setInterval(analyze, FRAME_MS);
+      if (!renderRAF) renderLoop();
+
+      console.log('[古琴计时器] 监听已启动，开始校准');
+
+    }).catch(function (err) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+
+      console.error('[古琴计时器] getUserMedia 失败', err);
+      listenBtn.disabled = false;
+      listenBtnText.textContent = '开始监听';
+      listenBtn.classList.remove('listening');
+
+      var msg;
+      var name = err && err.name ? err.name : '';
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+        msg = '麦克风权限被拒绝。请点击浏览器地址栏左侧的锁/摄像头图标，把“麦克风”改为“允许”，然后刷新页面重试。';
+      } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+        msg = '未检测到麦克风设备，请确认已连接麦克风。';
+      } else if (name === 'NotReadableError' || name === 'TrackStartError') {
+        msg = '麦克风被其他程序占用，请关闭可能正在使用麦克风的软件后重试。';
+      } else if (name === 'OverconstrainedError') {
+        msg = '麦克风不支持所需的音频参数，请更换设备后重试。';
+      } else if (name === 'SecurityError') {
+        msg = '当前页面环境不安全，无法访问麦克风。请通过 https:// 或 localhost 打开此页面。';
+      } else {
+        msg = '无法访问麦克风：' + (err && err.message ? err.message : '未知错误');
+      }
+      setHint(msg, 'err');
+    });
+  }
+
+  function stopListening() {
+    if (practicing && currentSegment) {
+      practicing = false;
+      finalizeSegment();
+    }
+    segmentStart = null;
+    toneHold = 0;
+    toneConfidence = 0;
+    isToneState = false;
+    listening = false;
+
+    if (analysisTimer) { clearInterval(analysisTimer); analysisTimer = null; }
+    if (renderRAF) { cancelAnimationFrame(renderRAF); renderRAF = null; }
+
+    if (mediaStream) {
+      try { mediaStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
+      mediaStream = null;
+    }
+    if (audioCtx) {
+      try { audioCtx.close(); } catch (e) {}
+      audioCtx = null;
+    }
+    analyser = null;
+    freqBuf = null;
+    rBuf = null;
+    noiseFloor = null;
+    calibrated = false;
+
+    listenBtn.classList.remove('listening');
+    listenBtnText.textContent = '开始监听';
+    listenBtn.disabled = false;
+    setHint('已停止监听，点击按钮可重新开始');
+    meterFill.style.width = '0%';
+    meterDot.classList.remove('on');
+    meterLabel.textContent = '琴声 0%';
+
+    renderUI();
+    renderRecords();
+    document.title = '古琴练习计时器';
+  }
+
+  /* ═══════════════ 事件绑定 ═══════════════ */
+  listenBtn.addEventListener('click', function (ev) {
+    ev.preventDefault();
+    if (listening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  });
+
+  sensSlider.addEventListener('input', function () {
+    P.sens = parseFloat(sensSlider.value);
+    updateThresholds();
+    var v = P.sens;
+    var txt = v <= 0.7 ? '保守' : (v <= 0.9 ? '偏保守' : (v <= 1.1 ? '标准' : (v <= 1.5 ? '偏灵敏' : '灵敏')));
+    sensVal.textContent = txt;
+  });
+
+  reqSlider.addEventListener('input', function () {
+    P.requiredMs = parseInt(reqSlider.value, 10) * 1000;
+    reqVal.textContent = reqSlider.value + ' 秒';
+  });
+
+  pauseSlider.addEventListener('input', function () {
+    P.pauseMs = parseInt(pauseSlider.value, 10) * 1000;
+    pauseVal.textContent = pauseSlider.value + ' 秒';
+  });
+
+  clearBtn.addEventListener('click', function () {
+    if (records.length === 0) {
+      setHint('当前没有记录可清空');
+      return;
+    }
+    if (window.confirm('确定要清空全部练习记录吗？此操作不可撤销。')) {
+      records = [];
+      saveRecords();
+      renderRecords();
+    }
+  });
+
+  /* ═══════════════ 周报 / 月报 ═══════════════ */
+  function buildReport(type) {
+    var todayKey = chinaDayKey(Date.now());
+    var startKey, endKey, title;
+
+    if (type === 'week') {
+      var dow = dayOfWeek(todayKey);
+      var monday = addDays(todayKey, -((dow + 6) % 7));
+      startKey = monday;
+      endKey = addDays(monday, 6);
+      title = '本周练习周报';
+    } else {
+      var p = todayKey.split('-');
+      var y = +p[0], m = +p[1];
+      startKey = y + '-' + pad2(m) + '-01';
+      var lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+      endKey = y + '-' + pad2(m) + '-' + pad2(lastDay);
+      title = y + ' 年 ' + m + ' 月练习月报';
+    }
+
+    var inRange = records.filter(function (r) {
+      var k = chinaDayKey(r.startTs);
+      return k >= startKey && k <= endKey;
+    });
+
+    var byDay = {};
+    var totalSec = 0;
+    inRange.forEach(function (r) {
+      var k = chinaDayKey(r.startTs);
+      byDay[k] = (byDay[k] || 0) + r.durationSec;
+      totalSec += r.durationSec;
+    });
+
+    var dayList = [];
+    var cur = startKey;
+    var guard = 0;
+    while (cur <= endKey && guard < 400) {
+      dayList.push({ key: cur, sec: byDay[cur] || 0 });
+      cur = addDays(cur, 1);
+      guard++;
+    }
+
+    var activeDays = 0;
+    var maxSec = 60;
+    dayList.forEach(function (d) {
+      if (d.sec > 0) activeDays++;
+      if (d.sec > maxSec) maxSec = d.sec;
+    });
+
+    var html = '';
+
+    html += '<div class="rep-range">' + fmtKeyShort(startKey) +
+            ' 起 &nbsp;—&nbsp; ' + fmtKeyShort(endKey) + ' 止</div>';
+
+    if (inRange.length === 0) {
+      html += '<div class="rep-empty">这段时间还没有练习记录</div>';
+      reportTitle.textContent = title;
+      reportBody.innerHTML = html;
+      return;
+    }
+
+    html += '<div class="rep-stats">';
+    html += '<div class="rep-stat"><div class="v">' + fmtMinShort(totalSec) + '</div><div class="k">总练习时长</div></div>';
+    html += '<div class="rep-stat"><div class="v">' + activeDays + ' 天</div><div class="k">练习天数</div></div>';
+    html += '<div class="rep-stat"><div class="v">' + inRange.length + ' 段</div><div class="k">练习段数</div></div>';
+    html += '<div class="rep-stat"><div class="v">' + (activeDays ? fmtMinShort(Math.round(totalSec / activeDays)) : '—') +
+            '</div><div class="k">练习日均</div></div>';
+    html += '</div>';
+
+    html += '<div class="chart">';
+    dayList.forEach(function (d) {
+      var h = d.sec > 0 ? Math.max(4, (d.sec / maxSec) * 100) : 0;
+      html += '<div class="chart-col">' +
+                '<div class="chart-bar' + (d.sec > 0 ? '' : ' zero') + '" ' +
+                'style="height:' + (d.sec > 0 ? h.toFixed(1) : '3') + '%" ' +
+                'title="' + d.key + ' ' + fmtMinShort(d.sec) + '"></div>' +
+              '</div>';
+    });
+    html += '</div>';
+
+    var step = dayList.length > 12 ? 5 : 1;
+    html += '<div class="chart-x">';
+    dayList.forEach(function (d, i) {
+      var show = (i === 0) || (i === dayList.length - 1) ||
+                 ((i + 1) % step === 0) || d.sec > 0;
+      html += '<span>' + (show ? (+d.key.split('-')[2]) : '') + '</span>';
+    });
+    html += '</div>';
+
+    html += '<ul class="rep-days">';
+    for (var i = dayList.length - 1; i >= 0; i--) {
+      var d = dayList[i];
+      if (d.sec <= 0) continue;
+      html += '<li><span>' + fmtDayLabel(d.key) + '</span><span>' + fmtMinShort(d.sec) + '</span></li>';
+    }
+    html += '</ul>';
+
+    reportTitle.textContent = title;
+    reportBody.innerHTML = html;
+  }
+
+  function openReport(type) {
+    buildReport(type);
+    reportModal.hidden = false;
+    document.body.style.overflow = 'hidden';
+  }
+  function closeReport() {
+    reportModal.hidden = true;
+    document.body.style.overflow = '';
+  }
+
+  weekBtn.addEventListener('click', function () { openReport('week'); });
+  monthBtn.addEventListener('click', function () { openReport('month'); });
+  reportClose.addEventListener('click', closeReport);
+  reportBackdrop.addEventListener('click', closeReport);
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !reportModal.hidden) closeReport();
+  });
+
+  window.addEventListener('beforeunload', function (e) {
+    if (listening && practicing && currentSegment && currentSegment.durationMs > 5000) {
+      upsertSegment();
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+
+  /* ═══════════════ 初始化 ═══════════════ */
+  try {
+    renderRecords();
+    renderUI();
+  } catch (e) {
+    console.error('[古琴计时器] 初始化失败', e);
+  }
+
+  // 页面加载后，如果 file:// 协议，给出提醒
+  if (location.protocol === 'file:') {
+    setTimeout(function () {
+      if (!navigator.mediaDevices) {
+        setHint('检测到当前为 file:// 协议且浏览器不支持麦克风。请用本地服务器打开：命令行运行 python -m http.server 8000，然后访问 http://localhost:8000', 'err');
+      }
+    }, 800);
+  }
+
+})();
+</script>
+</body>
+</html>
